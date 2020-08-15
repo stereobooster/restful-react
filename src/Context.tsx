@@ -1,7 +1,7 @@
 import noop from "lodash/noop";
 import * as React from "react";
 import { IStringifyOptions } from "qs";
-import { ResolveFunction } from "./Get";
+import { ResolveFunction } from "./types";
 
 export interface RestfulReactProviderProps<TData = any> {
   /** The backend URL where the RESTful resources live. */

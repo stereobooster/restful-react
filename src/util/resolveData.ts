@@ -1,11 +1,11 @@
-import { GetDataError, ResolveFunction } from "../types";
+import { GetDataError, ResolveFunctionPrimise } from "../types";
 
 export const resolveData = async <TData, TError>({
   data,
   resolve,
 }: {
   data: any;
-  resolve?: ResolveFunction<TData>;
+  resolve?: ResolveFunctionPrimise<TData>;
 }): Promise<{ data: TData | null; error: GetDataError<TError> | null }> => {
   let resolvedData: TData | null = null;
   let resolveError: GetDataError<TError> | null = null;

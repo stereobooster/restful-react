@@ -6,10 +6,27 @@ import qs, { IStringifyOptions } from "qs";
 import url from "url";
 
 import { Context, RestfulReactProviderProps } from "./Context";
-import { GetState } from "./Get";
 import { processResponse } from "./util/processResponse";
 import { useDeepCompareEffect } from "./util/useDeepCompareEffect";
 import { useAbort } from "./useAbort";
+
+export interface GetDataError<TError> {
+  message: string;
+  data: TError | string;
+  status?: number;
+}
+
+/**
+ * State for the <Get /> component. These
+ * are implementation details and should be
+ * hidden from any consumers.
+ */
+export interface GetState<TData, TError> {
+  data: TData | null;
+  response: Response | null;
+  error: GetDataError<TError> | null;
+  loading: boolean;
+}
 
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 

@@ -1,10 +1,36 @@
 import merge from "lodash/merge";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Context } from "./Context";
-import { MutateMethod, MutateState, MutateRequestOptions } from "./Mutate";
-import { Omit, resolvePath, UseGetProps } from "./useGet";
+import { Omit, resolvePath, UseGetProps, GetState } from "./useGet";
 import { processResponse } from "./util/processResponse";
 import { useAbort } from "./useAbort";
+
+
+export type MutateMethod<TData, TRequestBody, TQueryParams, TPathParams> = (
+  data: TRequestBody,
+  mutateRequestOptions?: MutateRequestOptions<TQueryParams, TPathParams>,
+) => Promise<TData>;
+
+/**
+ * State for the <Mutate /> component. These
+ * are implementation details and should be
+ * hidden from any consumers.
+ */
+export interface MutateState<TData, TError> {
+  error: GetState<TData, TError>["error"];
+  loading: boolean;
+}
+
+export interface MutateRequestOptions<TQueryParams, TPathParams> extends RequestInit {
+  /**
+   * Query parameters
+   */
+  queryParams?: TQueryParams;
+  /**
+   * Path parameters
+   */
+  pathParams?: TPathParams;
+}
 
 export interface UseMutateProps<TData, TError, TQueryParams, TRequestBody, TPathParams>
   extends Omit<UseGetProps<TData, TError, TQueryParams, TPathParams>, "lazy" | "debounce" | "mock"> {
