@@ -1,10 +1,8 @@
 import merge from "lodash/merge";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext } from "react";
 import { Context } from "./Context";
 import { Omit, resolvePath, UseGetProps, GetState } from "./useGet";
-import { processResponse } from "./util/processResponse";
-import { useAbort } from "./useAbort";
-
+import { useFetch, FetchRequest } from "./useFetch";
 
 export type MutateMethod<TData, TRequestBody, TQueryParams, TPathParams> = (
   data: TRequestBody,
@@ -103,27 +101,10 @@ export function useMutate<
   const { verb, base = context.base, path, queryParams = {}, resolve, pathParams = {} } = props;
   const isDelete = verb === "DELETE";
 
-  const [state, setState] = useState<MutateState<TData, TError>>({
-    error: null,
-    loading: false,
-  });
-
-  const { abort, getAbortSignal } = useAbort();
-
-  // Cancel the fetch on unmount
-  useEffect(() => () => abort(), [abort]);
+  const { error, loading, execute, cancel } = useFetch(base, {}, []);
 
   const mutate = useCallback<MutateMethod<TData, TRequestBody, TQueryParams, TPathParams>>(
     async (body: TRequestBody, mutateRequestOptions?: MutateRequestOptions<TQueryParams, TPathParams>) => {
-      if (state.error || !state.loading) {
-        setState(prevState => ({ ...prevState, loading: true, error: null }));
-      }
-
-      if (state.loading) {
-        // Abort previous requests
-        abort();
-      }
-
       const pathStr =
         typeof path === "function" ? path(mutateRequestOptions?.pathParams || (pathParams as TPathParams)) : path;
 
@@ -135,7 +116,7 @@ export function useMutate<
       const contextRequestOptions =
         (typeof context.requestOptions === "function" ? await context.requestOptions() : context.requestOptions) || {};
 
-      const options: RequestInit = {
+      const options: FetchRequest = {
         method: verb,
       };
 
@@ -154,112 +135,26 @@ export function useMutate<
         options.body = (body as unknown) as string;
       }
 
-      const signal = getAbortSignal();
+      merge(options, contextRequestOptions, options, propsRequestOptions, mutateRequestOptions);
 
-      const request = new Request(
-        resolvePath(
+      return execute({
+        path: resolvePath(
           base,
           pathParts.join("/"),
           { ...context.queryParams, ...queryParams, ...mutateRequestOptions?.queryParams },
           { ...context.queryParamStringifyOptions, ...props.queryParamStringifyOptions },
         ),
-        merge({}, contextRequestOptions, options, propsRequestOptions, mutateRequestOptions, { signal }),
-      );
-      if (context.onRequest) context.onRequest(request);
-
-      let response: Response;
-      try {
-        response = await fetch(request);
-        if (context.onResponse) context.onResponse(response.clone());
-      } catch (e) {
-        const error = {
-          message: `Failed to fetch: ${e.message}`,
-          data: "",
-        };
-
-        setState({
-          error,
-          loading: false,
-        });
-
-        if (!props.localErrorOnly && context.onError) {
-          context.onError(error, () => mutate(body, mutateRequestOptions));
-        }
-
-        throw error;
-      }
-
-      const { data: rawData, responseError } = await processResponse(response);
-
-      let data: TData | any; // `any` -> data in error case
-      try {
-        data = resolve ? resolve(rawData) : rawData;
-      } catch (e) {
-        // avoid state updates when component has been unmounted
-        // and when fetch/processResponse threw an error
-        if (signal && signal.aborted) {
-          return;
-        }
-
-        const error = {
-          data: e.message,
-          message: `Failed to resolve: ${e.message}`,
-        };
-
-        setState(prevState => ({
-          ...prevState,
-          error,
-          loading: false,
-        }));
-        throw e;
-      }
-
-      if (signal && signal.aborted) {
-        return;
-      }
-
-      if (!response.ok || responseError) {
-        const error = {
-          data,
-          message: `Failed to fetch: ${response.status} ${response.statusText}`,
-          status: response.status,
-        };
-
-        setState(prevState => ({
-          ...prevState,
-          error,
-          loading: false,
-        }));
-
-        if (!props.localErrorOnly && context.onError) {
-          context.onError(error, () => mutate(body), response);
-        }
-
-        throw error;
-      }
-
-      setState(prevState => ({ ...prevState, loading: false }));
-
-      if (props.onMutate) {
-        props.onMutate(body, data);
-      }
-
-      return data;
+        ...options,
+      }).then(rawData => (resolve ? resolve(rawData) : rawData));
     },
-    /* eslint-disable react-hooks/exhaustive-deps */
-    [context.base, context.requestOptions, context.resolve, state.error, state.loading, path, abort, getAbortSignal],
+    [base, context.requestOptions, context.resolve, path],
   );
 
   return {
-    ...state,
+    error,
+    loading,
     mutate,
     ...props.mock,
-    cancel: () => {
-      setState(prevState => ({
-        ...prevState,
-        loading: false,
-      }));
-      abort();
-    },
+    cancel,
   };
 }

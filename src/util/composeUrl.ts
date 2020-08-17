@@ -1,7 +1,5 @@
-import url from "url";
-
-export const composeUrl = (base: string = "", parentPath: string = "", path: string = ""): string => {
-  const composedPath = composePath(parentPath, path);
+export const composeUrl = (base: string = "", _: string = "", path: string = ""): string => {
+  const composedPath = path;
   /* If the base is empty, preceding slash will be trimmed during composition */
   if (base === "" && composedPath.startsWith("/")) {
     return composedPath;
@@ -9,22 +7,4 @@ export const composeUrl = (base: string = "", parentPath: string = "", path: str
 
   /* If the base contains a trailing slash, it will be trimmed during composition */
   return base!.endsWith("/") ? `${base!.slice(0, -1)}${composedPath}` : `${base}${composedPath}`;
-};
-
-/**
- * If the path starts with slash, it is considered as absolute url.
- * If not, it is considered as relative url.
- * For example,
- * parentPath = "/someBasePath" and path = "/absolute" resolves to "/absolute"
- * whereas,
- * parentPath = "/someBasePath" and path = "relative" resolves to "/someBasePath/relative"
- */
-export const composePath = (parentPath: string = "", path: string = ""): string => {
-  if (path.startsWith("/") && path.length > 1) {
-    return url.resolve(parentPath, path);
-  } else if (path !== "" && path !== "/") {
-    return `${parentPath}/${path}`;
-  } else {
-    return parentPath;
-  }
 };

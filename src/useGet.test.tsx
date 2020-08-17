@@ -114,56 +114,6 @@ describe("useGet hook", () => {
       requestResolves!();
       await wait(() => expect(resolve).not.toHaveBeenCalled());
     });
-
-    it("should call provider onRequest", async () => {
-      nock("https://my-awesome-api.fake")
-        .get("/")
-        .reply(200, { oh: "my god 😍" });
-
-      const MyAwesomeComponent = () => {
-        const { data, loading } = useGet<{ oh: string }>({ path: "/" });
-
-        return loading ? <div data-testid="loading">Loading…</div> : <div data-testid="data">{data?.oh}</div>;
-      };
-
-      const onRequest = jest.fn();
-
-      render(
-        <RestfulProvider base="https://my-awesome-api.fake" onRequest={onRequest}>
-          <MyAwesomeComponent />
-        </RestfulProvider>,
-      );
-
-      expect(onRequest).toBeCalled();
-    });
-
-    it("should call provider onResponse", async () => {
-      nock("https://my-awesome-api.fake")
-        .get("/")
-        .reply(200, { oh: "my god 😍" });
-
-      let body: any;
-      const MyAwesomeComponent = () => {
-        const { data, loading } = useGet<{ oh: string }>({ path: "/" });
-
-        return loading ? <div data-testid="loading">Loading…</div> : <div data-testid="data">{data?.oh}</div>;
-      };
-
-      const onResponse = jest.fn().mockImplementation(async (response: Response) => {
-        body = await response.json();
-      });
-
-      const { getByTestId } = render(
-        <RestfulProvider base="https://my-awesome-api.fake" onResponse={onResponse}>
-          <MyAwesomeComponent />
-        </RestfulProvider>,
-      );
-
-      await waitForElement(() => getByTestId("data"));
-
-      expect(onResponse).toBeCalled();
-      expect(body).toMatchObject({ oh: "my god 😍" });
-    });
   });
 
   describe("url composition", () =>
@@ -807,34 +757,6 @@ describe("useGet hook", () => {
 
       expect(firstAPI.isDone()).toBeTruthy();
       expect(secondAPI.isDone()).toBeTruthy();
-    });
-    it("should refetch when parentPath changes", async () => {
-      let apiCalls = 0;
-      nock("https://my-awesome-api.fake")
-        .get("/")
-        .reply(200, () => ++apiCalls);
-
-      const children = jest.fn();
-      children.mockReturnValue(<div />);
-
-      const MyAwesomeComponent: React.FC<{ path: string }> = ({ path }) => {
-        const params = useGet<{ id: number }>({ path });
-        return children(params);
-      };
-
-      const { rerender } = render(
-        <RestfulProvider base="https://my-awesome-api.fake">
-          <MyAwesomeComponent path="" />
-        </RestfulProvider>,
-      );
-
-      rerender(
-        <RestfulProvider base="https://my-awesome-api.fake" parentPath="parent">
-          <MyAwesomeComponent path="" />
-        </RestfulProvider>,
-      );
-
-      expect(apiCalls).toEqual(2);
     });
     it("should refetch when queryParams change", async () => {
       nock("https://my-awesome-api.fake")

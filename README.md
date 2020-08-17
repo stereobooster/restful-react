@@ -22,9 +22,6 @@ As an abstraction, this tool allows for greater consistency and maintainability 
     - [TypeScript Integration](#typescript-integration)
     - [Query Parameters](#query-parameters)
     - [Mutations with `useMutate`](#mutations-with-usemutate)
-    - [Polling with `Poll`](#polling-with-poll)
-      - [Long Polling](#long-polling)
-      - [Full `Poll` Component API](#full-poll-component-api)
     - [Code Generation](#code-generation)
       - [Usage](#usage)
       - [Validation of the OpenAPI specification](#validation-of-the-openapi-specification)
@@ -156,11 +153,6 @@ export interface RestfulReactProviderProps<T = any> {
   /** The backend URL where the RESTful resources live. */
   base: string;
   /**
-   * The path that gets accumulated from each level of nesting
-   * taking the absolute and relative nature of each path into consideration
-   */
-  parentPath?: string;
-  /**
    * A function to resolve data return from the backend, most typically
    * used when the backend response needs to be adapted in some way.
    */
@@ -179,14 +171,6 @@ export interface RestfulReactProviderProps<T = any> {
   onError?: (err: any, retry: () => Promise<T | null>, response?: Response) => void;
   /**
    * Trigger on each request.
-   */
-  onRequest?: (req: Request) => void;
-  /**
-   * Trigger on each response.
-   */
-  onResponse?: (req: Response) => void;
-  /**
-   * Query parameters passed to each request.
    */
   queryParams?: { [key: string]: any };
   /**
@@ -473,91 +457,6 @@ const { data: posts } = useGet({
   },
 });
 ```
-
-### Polling with `Poll`
-
-`restful-react` also exports a `Poll` render props component that will poll a backend endpoint over a predetermined interval until a stop condition is met. Consider,
-
-```jsx
-import { Poll } from "restful-react"
-
-<Poll path="/deployLogs" resolve={data => data && data.data}>
-  {(deployLogs: DeployLog[], { loading }) =>
-    loading ? (
-      <PageSpinner />
-    ) : (
-      <DataTable
-        columns={["createdAt", "deployId", "status", "sha", "message"]}
-        orderBy="createdAt"
-        data={deployLogs}
-        formatters={{
-          createdAt: (d: DeployLog["createdAt"]) => title(formatRelative(d, Date.now())),
-          sha: (i: DeployLog["sha"]) => i && i.slice(0, 7),
-        }}
-      />
-    )
-  }
-</Poll>
-```
-
-`Poll` supports:
-
-- an `interval` prop that will poll at a specified interval (defaults to polling 1 second), and
-- an `until` prop that accepts a condition expressed as a function that returns a boolean value. When this condition is met, polling will stop.
-
-  The signature of this function is `(data: T, response: ResponseInit) => boolean`. As a developer, you have access to the returned data, along with the response object in case you'd like to stop polling if `response.ok === false`, for example.
-
-Below is a more convoluted example that employs nearly the full power of the `Poll` component.
-
-```jsx
-<Poll path="/status" until={(_, response) => response && response.ok} interval={0} lazy>
-  {(_, { loading, error, finished, polling }, { start }) => {
-    return loading ? (
-      <Progress error={error} />
-    ) : (
-      <Button
-        loading={editorLoading || polling}
-        condensed
-        icon="ExternalLink"
-        color="ghost"
-        onClick={() => {
-          if (finished) {
-            return window.open(editor.url);
-          }
-          requestEditor();
-          start();
-        }}
-      >
-        {finished ? "Launch Editor" : "Request Editor"}
-      </Button>
-    );
-  }}
-</Poll>
-```
-
-Note from the previous example, `Poll` also exposes more states: `finished`, and `polling` that allow better flow control, as well as lazy-start polls that can also be programmatically stopped at a later stage.
-
-#### Long Polling
-
-At Contiamo, we have a [powerful Long Polling specification](docs/contiamo-long-poll.md) in place that allows us to build real-time apps over HTTPS, as opposed to WebSockets. At a glance the specification can be distilled into:
-
-- Web UI sends a request with a `Prefer` header that contains:
-  - a time, in seconds, to keep requests open (`60s`), and
-  - a **polling index** that is a server-sent hash `ahpiegh`.
-  - all together, the client sends a request with a header `Prefer: wait=60s;index=939192`.
-- The backend server responds, either with:
-  - an empty response with status `304 Not Modified`
-  - a successful response with data and a new **polling index**.
-
-The polling index allow the client and the server to stay in sync: the client says "the last stuff I got was at this index". The server says "oh, let me get you up to speed and send you a new index".
-
-Visually, this is represented as below.
-
-![Contiamo Poll](docs/long-poll-flow.png).
-
-To get this functionality in `restful-react`, this means specifying a `wait` prop on your `Poll` component, provided your server implements this specification as well.
-
-#### [Full `Poll` Component API](src/Poll.tsx#L53-L101)
 
 ### Code Generation
 

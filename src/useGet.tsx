@@ -147,11 +147,9 @@ async function _fetchData<TData, TError, TQueryParams, TPathParams>(
     ),
     merge({}, contextRequestOptions, propsRequestOptions, { signal }),
   );
-  if (context.onRequest) context.onRequest(request);
 
   try {
     const response = await fetch(request);
-    if (context.onResponse) context.onResponse(response.clone());
     const { data, responseError } = await processResponse(response);
 
     if (signal && signal.aborted) {
@@ -282,7 +280,6 @@ export function useGet<TData = any, TError = any, TQueryParams = { [key: string]
     props.requestOptions,
     props.pathParams,
     context.base,
-    context.parentPath,
     context.queryParams,
     context.requestOptions,
     abort,

@@ -720,42 +720,6 @@ describe("useMutate", () => {
         expect(e.message).toEqual("I don't like your data!");
       }
     });
-
-    it("should call the provider onRequest", async () => {
-      nock("https://my-awesome-api.fake")
-        .post("/")
-        .reply(200, { hello: "world" });
-
-      const onRequest = jest.fn();
-      const wrapper: React.FC = ({ children }) => (
-        <RestfulProvider base="https://my-awesome-api.fake" onRequest={onRequest}>
-          {children}
-        </RestfulProvider>
-      );
-      const { result } = renderHook(() => useMutate("POST", ""), { wrapper });
-      await result.current.mutate({ foo: "bar" });
-      expect(onRequest).toBeCalled();
-    });
-
-    it("should call the provider onResponse", async () => {
-      nock("https://my-awesome-api.fake")
-        .post("/")
-        .reply(200, { hello: "world" });
-
-      let body: any;
-      const onResponse = jest.fn(async (res: Response) => {
-        body = await res.json();
-      });
-      const wrapper: React.FC = ({ children }) => (
-        <RestfulProvider base="https://my-awesome-api.fake" onResponse={onResponse}>
-          {children}
-        </RestfulProvider>
-      );
-      const { result } = renderHook(() => useMutate("POST", ""), { wrapper });
-      await result.current.mutate({ foo: "bar" });
-      expect(onResponse).toBeCalled();
-      expect(body).toMatchObject({ hello: "world" });
-    });
   });
 
   describe("generation pattern", () => {
